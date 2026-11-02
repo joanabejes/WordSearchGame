@@ -5,10 +5,303 @@ body {
    font-family: Arial, Helvetica, sans-serif;
    text-align: center;
    margin: 0;
+    overflow: hidden;
 }
 
 h1 {color: #0277bd;}
 
+/* clean ocean (start screen) */
+#ocean-scene {
+    position: fixed;
+    inset: 0;
+    z-index: 200;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    background: linear-gradient(180deg,
+    #4fc3f7 0%,
+    #0288d1 25%,
+    #01579b 60%,
+    #01234d 100%);
+    transition: opacity 1.4s ease, visibility 1.4s ease;
+}
+
+#ocean-scene.hidden {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+}
+
+#ocean-scene::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background:
+            radial-gradient(ellipse 40% 60% at 20% 0%, rgba(225,245,254,0.35), transparent 70%),
+            radial-gradient(ellipse 30% 50% at 75% 0%, rgba(225,245,254,0.25), transparent 70%);
+    pointer-events: none;
+}
+
+#ocean-bubbles {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background-image:
+            radial-gradient(circle, rgba(255,255,255,0.55) 2px, transparent 3px),
+            radial-gradient(circle, rgba(255,255,255,0.35) 3px, transparent 4px),
+            radial-gradient(circle, rgba(255,255,255,0.45) 1.5px, transparent 2.5px);
+    background-size: 180px 260px, 240px 320px, 140px 200px;
+    animation: bubblesRise 18s linear infinite;
+    opacity: 0.7;
+}
+
+@keyframes bubblesRise {
+    from { background-position: 0 0, 60px 120px, 100px 40px; }
+    to   { background-position: 0 -260px, 60px -200px, 100px -160px; }
+}
+
+#ocean-creatures {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+}
+
+.creature {
+    position: absolute;
+    left: var(--x);
+    top: var(--y);
+    width: calc(52px * var(--s));
+    height: auto;
+    animation: swim var(--t, 16s) ease-in-out infinite;
+    animation-delay: var(--d, 0s);
+    filter: drop-shadow(0 4px 10px rgba(0,0,0,0.25));
+    opacity: 0.95;
+}
+
+.creature.big { width: calc(78px * var(--s)); }
+
+.creature.still {
+    animation: bob 4s ease-in-out infinite;
+    animation-delay: var(--d, 0s);
+}
+
+@keyframes swim {
+    0%   { transform: translate(0, 0) rotate(0deg); }
+    25%  { transform: translate(40px, -22px) rotate(-6deg); }
+    50%  { transform: translate(80px, 8px) rotate(4deg); }
+    75%  { transform: translate(35px, 26px) rotate(-3deg); }
+    100% { transform: translate(0, 0) rotate(0deg); }
+}
+
+@keyframes bob {
+    0%, 100% { transform: translateY(0) scale(1); }
+    50%      { transform: translateY(-8px) scale(1.04); }
+}
+
+#ocean-content {
+    position: relative;
+    z-index: 2;
+    text-align: center;
+    padding: 20px;
+}
+
+#logo {
+    width: min(90vw, 660px);
+    height: auto;
+    filter: drop-shadow(0 10px 30px rgba(0,0,0,0.4));
+    animation: floatLogo 4.5s ease-in-out infinite;
+}
+
+@keyframes floatLogo {
+    0%, 100% { transform: translateY(0); }
+    50%      { transform: translateY(-14px); }
+}
+
+#wave { animation: waveMove 3.5s ease-in-out infinite; }
+
+@keyframes waveMove {
+    0%, 100% { transform: translateX(0); }
+    50%      { transform: translateX(-18px); }
+}
+
+#tagline {
+    color: #e1f5fe;
+    font-size: 20px;
+    letter-spacing: 2px;
+    margin: 4px 0 34px;
+    text-shadow: 0 2px 10px rgba(0,0,0,0.4);
+}
+
+#play-button {
+    background: #4fc3f7;
+    color: #01234d;
+    border: none;
+    padding: 18px 62px;
+    font-size: 22px;
+    font-weight: bold;
+    letter-spacing: 1px;
+    border-radius: 50px;
+    cursor: pointer;
+    box-shadow: 0 8px 26px rgba(79,195,247,0.55);
+    transition: transform 0.2s, box-shadow 0.2s, background 0.2s;
+}
+
+#play-button:hover {
+    transform: translateY(-4px) scale(1.04);
+    background: #81d4fa;
+    box-shadow: 0 14px 34px rgba(79,195,247,0.75);
+}
+
+/* ocean background */
+#ocean-layer {
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    overflow: hidden;
+}
+
+#ocean-clean,
+#ocean-polluted {
+    position: absolute;
+    inset: 0;
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+}
+
+#ocean-clean {
+    background: linear-gradient(180deg,
+    #4fc3f7 0%,
+    #0288d1 30%,
+    #01579b 70%,
+    #01234d 100%);
+}
+
+#ocean-polluted {
+    background: linear-gradient(180deg,
+    rgba(120, 154, 95, 0.50) 0%,
+    rgba(85, 110, 75, 0.62) 40%,
+    rgba(50, 75, 55, 0.72) 100%);
+    opacity: 0;
+    transition: opacity 1.6s ease;
+}
+
+#ocean-layer::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: rgba(1, 35, 77, 0.42);
+    pointer-events: none;
+    z-index: 1;
+}
+/* trash layer */
+#ocean-bg-creatures{
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 1;
+    transition: filter 1.2s ease;
+}
+
+#ocean-bg-creatures.polluted{
+    filter: hue-rotate(55deg) saturate(0.65) brightness(0.85);
+}
+
+.bg-creature{
+    position: absolute;
+    left: var(--x);
+    top: var(--y);
+    width: calc(48px * var(--s));
+    height: auto;
+    opacity: 0.55;
+    animation: swim var(--t, 20s) ease-in-out infinite;
+    animation-delay: var(--d, 0s);
+}
+
+.bg-creature.big{ width: calc(72px * var(--s));}
+
+.bg-creature.still{
+    animation: bob 5s ease-in-out infinite;
+    animation-delay: var(--d, 0s);
+}
+
+
+/* trash layer */
+#ocean-trash {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 2;
+}
+
+.trash-item {
+    position: absolute;
+    left: var(--x);
+    top: var(--y);
+    width: calc(46px * var(--s));
+    height: auto;
+    transform: rotate(var(--r, 0deg));
+    opacity: 0;
+    transition: opacity 0.9s ease, transform 0.9s ease;
+    filter: drop-shadow(0 3px 8px rgba(0,0,0,0.35));
+}
+
+.trash-item.visible { opacity: 0.92; }
+
+.trash-item.removed {
+    opacity: 0;
+    transform: rotate(var(--r, 0deg)) translateY(-40px) scale(0.8);
+}
+
+#ocean-trash .trash-item{
+    width: clamp(28px, 4vw, 56px);
+}
+/* game layout */
+#game-layout {
+    display: flex;
+    align-items: stretch;
+    gap: 0;
+    margin: 0;
+    max-width: none;
+    min-height: 100vh;
+    position: relative;
+    z-index: 1;
+}
+
+#left-panel, #right-panel {
+    width: 220px;
+    flex-shrink: 0;
+    background: rgba(1,45,75,0.85);
+    backdrop-filter: blur(4px);
+    border: none;
+    border-radius: 0;
+    padding: 20px 16px;
+    text-align: left;
+    color: white;
+}
+
+#left-panel label {
+    display: block;
+    font-weight: bold;
+    color: #b3e5fc;
+    margin: 12px 0 4px 0;
+}
+
+#center-panel {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+#center-panel h1 {
+    color: #e1f5fe;
+    text-shadow: 0 3px 12px rgba(0,0,0,0.6);
+}
+
+/* grid */
 #grid {
    display: grid;
    --cell-size: 40px;
@@ -22,14 +315,16 @@ h1 {color: #0277bd;}
    width: var(--cell-size);
    height: var(--cell-size);
    box-sizing: border-box;
-   background: #e0f7fa;
+   background: rgba(224, 247, 250, 0.92);
    border: 2px solid #0277bd;
    display: flex;
    align-items: center;
    justify-content: center;
    font-size: 18px;
    font-weight: bold;
+    color: #01234d;
    cursor: pointer;
+    user-select: none;
 }
 
 .cell:hover{
@@ -51,16 +346,19 @@ h1 {color: #0277bd;}
     color: white;  
 }
 
+/* word list */
 #word-list{
    list-style: none;
    padding: 0;
+    margin: 0;
 }
 
 #word-list li{
-   display: inline-block;
-   margin: 4px 10px;
+   display: block;
+   margin: 4px 0;
    font-weight: bold;
    color: #b3e5fc;
+    font-size: 14px;
 }
 
 #word-list li.found{
@@ -68,6 +366,36 @@ h1 {color: #0277bd;}
    color: #78909c;
 }
 
+/* option buttons */
+.option-group{
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 8px;
+}
+
+.option-btn{
+    background: rgba(255, 255, 255, 0.08);
+    color: white;
+    border: 1px solid rgba(179, 229, 252, 0.4);
+    border-radius: 6px;
+    padding: 8px ;
+    font-size: 13px;
+    cursor: pointer;
+}
+
+.option-btn:hover{
+    background: rgba(255, 255, 255, 0.15);
+}
+
+.option-btn.active{
+    background: #4fc3f7;
+    color: #01234d;
+    font-weight: bold;
+    border-color:#4fc3f7
+}
+
+/* new game button */
 #new-game{
    background: #0288d1;
    color: white;
@@ -89,128 +417,155 @@ h1 {color: #0277bd;}
     cursor: not-allowed;
 }
 
+#message{
+    color: #e1f5fe;
+    font-weight: bold;
+    text-shadow: 0 2px 8px rgba(0,0,0,0.6);
+}
 
+/* victory */
 #victory {
     position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(2, 119, 189, 0.85);
-    backdrop-filter: blur(4px);
+    inset: 0;
+    z-index: 300;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    z-index: 10;
+    background: linear-gradient(180deg,
+    #4fc3f7 0%,
+    #0288d1 30%,
+    #01579b 70%,
+    #01234d 100%);
+    overflow: hidden;
 }
 
+#ocean-scene,
+#victory {
+    position: fixed;
+    inset: 0;
+    z-index: 200;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    background: linear-gradient(180deg,
+    #4fc3f7 0%,
+    #0288d1 25%,
+    #01579b 60%,
+    #01234d 100%);
+    transition: opacity 1.4s ease, visibility 1.4s ease;
+}
+
+#ocean-scene.hidden,
 #victory.hidden {
-    display: none;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+}
+
+#ocean-scene::before,
+#victory::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background:
+            radial-gradient(ellipse 40% 60% at 20% 0%, rgba(225,245,254,0.35), transparent 70%),
+            radial-gradient(ellipse 30% 50% at 75% 0%, rgba(225,245,254,0.25), transparent 70%);
+    pointer-events: none;
+}
+
+#ocean-bubbles,
+.ocean-bubbles-layer {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background-image:
+            radial-gradient(circle, rgba(255,255,255,0.55) 2px, transparent 3px),
+            radial-gradient(circle, rgba(255,255,255,0.35) 3px, transparent 4px),
+            radial-gradient(circle, rgba(255,255,255,0.45) 1.5px, transparent 2.5px);
+    background-size: 180px 260px, 240px 320px, 140px 200px;
+    animation: bubblesRise 18s linear infinite;
+    opacity: 0.7;
+}
+
+#victory-content{
+    position: relative;
+    z-index: 3;
+    text-align: center;
+    padding: 20px;
+}
+
+#ocean-creatures,
+.ocean-creatures-layer {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+}
+#confetti{
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 2;
+    overflow: hidden;
+}
+
+.confetti-piece{
+    position: absolute;
+    top: -20px;
+    width: 10px;
+    height: 16px;
+    opacity: 0.9;
+    animation: confettiFall linear infinite;
+}
+
+@keyframes confettiFall {
+    0% {
+        transform: translateY(-20px) rotate(0deg);
+        opacity: 1;
+    }
+    100%{
+        transform: translateY(105vh) rotate(720deg);
+        opacity: 0.7;
+    }
+
 }
 
 #victory h2{
     font-size: 44px;
     color: white;
-    animation: bounce 1.2s infinite;
+    margin: 0 0 8px;
+    text-shadow: 0 4px 18px rgba(0,0,0,0.6);
+    animation: bounce 1.4s ease-in-out infinite;
+}
+
+@keyframes bounce {
+    0%, 100% {transform: translateY(0)}
+    50%{transform: translateY(-16px)}
 }
 
 #victory p {
     font-size: 22px;
-    color: white;
+    color: #e1f5fe;
+    margin: 0 0 28px;
+    text-shadow: 0 2px 10px rgba(0,0,0,0.6);
 }
 
 #victory-button{
     background: white;
-    color: #0277bd;
+    color: #01579b;
     border: none;
-    padding: 12px 28px;
-    font-size: 18px;
+    padding: 14px 40px;
+    font-size: 19px;
     font-weight: bold;
-    border-radius: 8px;
+    border-radius: 40px;
     cursor: pointer;
-    margin-top: 20px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+    transition: transform 0.2s;
 }
 
 #victory-button:hover{
-    background: #e1f5fe;
-}
-
-@keyframes bounce {
-    0%  { transform: translateY(0);}
-    50% {transform: translateY(-20px);}
-    100% {transform: translateY(0);}
-}
-
-#game-layout{
-    display: flex;
-    align-items: stretch;
-    gap: 0;
-    margin: 0;
-    max-width: none;
-    min-height: 100vh;
-}
-
-#left-panel, #right-panel{
-    width: 220px;
-    flex-shrink: 0;
-    background: rgba(1,45,75,0.85);
-    backdrop-filter: blur(4px);
-    border: none;
-    border-radius: 0;
-    padding: 20px 16px;
-    text-align: left;
-    color: white;
-}
-
-#left-panel label{
-    display: block;
-    font-weight: bold;
-    color: #b3e5fc;
-    margin: 12px 0 4px 0;
-}
-
-#left-panel select{
-    width: 100%;
-    padding: 6px;
-    font-size: 14px;
-    border: 1px solid #4fc3f7;
-    border-radius: 6px;
-}
-
-#center-panel{
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-}
-
-.option-group{
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    margin-bottom: 8px;
-}
-
-.option-btn{
-    background: rgba(255, 255, 255, 0.08);
-    color: white;
-    border: 1px solid rgba(179, 229, 252, 0.4);
-     border-radius: 6px;
-    padding: 8px ;
-    font-size: 13px;
-    cursor: pointer;
-}
-
-.option-btn:hover{
-    background: rgba(255, 255, 255, 0.15);
-}
-
-.option-btn.active{
-    background: #4fc3f7;
-    color: #01234d;
-    font-weight: bold;
-    border-color:#4fc3f7
+   transform: translateY(-3px) scale(1.04);
 }
 
 /* mobile */
@@ -255,9 +610,6 @@ h1 {color: #0277bd;}
 
     #center-panel{ 
         width: 100%;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
     }
 
     #center-panel h1{
@@ -291,4 +643,20 @@ h1 {color: #0277bd;}
         width: 100%;
         max-width: 100%;
     }
+
+    #logo { width: min(92vw, 420px); }
+    #tagline { font-size: 16px; }
+    #play-button { padding: 15px 48px; font-size: 19px; }
+
+    .creature       { width: calc(34px * var(--s)); }
+    .creature.big   { width: calc(50px * var(--s)); }
+    .trash-item     { width: calc(30px * var(--s)); }
+
+    .victory-animal       { width: calc(38px * var(--s)); }
+    .victory-animal.big   { width: calc(54px * var(--s)); }
+
+    #victory h2 { font-size: 30px; }
+    #victory p  { font-size: 17px; }
+    #victory-button { padding: 12px 32px; font-size: 16px; }
+
 }

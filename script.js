@@ -5,7 +5,7 @@ const LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 // board size: 10x10
 let SIZE = 10;
 
-// curent level
+// current level
 let currentLevel = "medium";
 
 // current language
@@ -197,6 +197,13 @@ const wordListUl = document.getElementById("word-list");
 const levelButtons = document.querySelectorAll("#level-group .option-btn");
 const languageButtons = document.querySelectorAll("#language-group .option-btn");
 
+// ocean scene references
+const oceanScene = document.getElementById("ocean-scene");
+const playButton = document.getElementById("play-button");
+const oceanPolluted = document.getElementById("ocean-polluted");
+const trashItems = document.querySelectorAll(".trash-item");
+
+
 // settings
 let savedSize = null;
 let savedLanguage = null;
@@ -221,7 +228,7 @@ if (savedValueIsValid(savedSize, levelButtons, "size")){
 if (savedValueIsValid(savedLanguage, languageButtons, "language")){
     currentLanguage = savedLanguage;
 }
-if (savedValueIsValid(savedLanguage, levelButtons, "level")){
+if (savedValueIsValid(savedLevel, levelButtons, "level")){
     currentLevel = savedLevel;
 }
 
@@ -229,7 +236,7 @@ if (savedValueIsValid(savedLanguage, levelButtons, "level")){
 // words per game
 const WORDS_PER_GAME = 10;
 
-// the words of the curret game
+// the words of the current game
 let WORDS = [];
 
 // the grid starts as an empty list
@@ -252,6 +259,41 @@ function chooseRandomWords() {
         pool.splice(index, 1);
     }
     return selection;
+}
+
+// update ocean
+function updateOcean(){
+    const total = WORDS.length;
+    if (total === 0) {
+        return;
+    }
+
+    const progress = foundCount / total;
+
+    // water gets cleaner
+    oceanPolluted.style.opacity = String(1-progress);
+
+    // creatures get their color back
+    const bgCreatures = document.getElementById("ocean-bg-creatures");
+    if (bgCreatures){
+        if (progress >= 1){
+            bgCreatures.classList.remove("polluted");
+        }else {
+            bgCreatures.classList.add("polluted")
+        }
+    }
+
+    // trash disappears
+    const visibleCount = Math.round(trashItems.length * (1 - progress));
+    trashItems.forEach(function (item, index){
+        if (index < visibleCount){
+            item.classList.add("visible");
+            item.classList.remove("removed");
+        }else{
+            item.classList.remove("visible");
+            item.classList.add("removed");
+        }
+    });
 }
 
 // hiding the words
@@ -316,6 +358,33 @@ function drawGrid(){
         }
     }
 }
+
+// confetti
+const CONFETTI_COLORS = [ "#4fc3f7", "#66bb6a", "#ffca28", "#ef5350", "#ab47bc", "#ffffff"];
+function startConfetti(){
+    const container = document.getElementById("confetti");
+    if (!container) return;
+    container.innerHTML = "";
+
+    for (let i = 0; i < 80; i++){
+        const piece = document.createElement("div");
+        piece.className = "confetti-piece";
+        piece.style.left = Math.random() * 100 + "%";
+        piece.style.background = CONFETTI_COLORS[Math.floor(Math.random() * CONFETTI_COLORS.length)];
+        piece.style.animationDuration = (2.5 + Math.random() * 2.5) + "s";
+        piece.style.animationDelay = (Math.random() * 2) + "s";
+        piece.style.width = (6 + Math.random() * 8) + "px";
+        piece.style.height = (10 + Math.random() * 10) + "px";
+        piece.style.borderRadius = Math.random() > 0.5 ? "50%" : "2px";
+        container.appendChild(piece);
+    }
+}
+
+function stopConfetti(){
+    const container = document.getElementById("confetti");
+    if (container) container.innerHTML = "";
+}
+
 
 // game state, remembering the first clicked cell AND its position
 let firstCell = null;
@@ -389,14 +458,17 @@ function checkWord (r1, c1, r2, c2){
             listItem.textContent = listItem.dataset.number + ". "+ word;
             // count it and update
             foundCount++;
+            updateOcean()
             document.getElementById("message").textContent = "You found: " + word;
             // victory
             if (foundCount === WORDS.length){
                 document.getElementById("victory").classList.remove("hidden");
+                startConfetti();
             }
         }
     }
 }
+
 
 // starting a new game
 function startGame(){
@@ -444,7 +516,7 @@ function startGame(){
         }
     }
 
-    // reseting the game state
+    // resetting the game state
     foundCount = 0;
     firstCell = null;
     document.getElementById("message").textContent = "";
@@ -474,6 +546,15 @@ function startGame(){
         wordListUl.appendChild(item);
         number++
     }
+
+    // reset the ocean
+    oceanPolluted.style.opacity ="1";
+    const bgCreatures = document.getElementById("ocean-bg-creatures");
+    if(bgCreatures) bgCreatures.classList.add("polluted")
+    trashItems.forEach(function (item){
+        item.classList.add("visible");
+        item.classList.remove("removed");
+    });
 }
 
 // finding words or checking
@@ -495,7 +576,7 @@ function findWord(word) {
 }
 
 // staring the first game when page loads
-startGame();
+//startGame();
 
 // game limit
 const MAX_NEW_GAMES = 3;
@@ -516,8 +597,15 @@ document.getElementById("new-game").addEventListener("click", function() {
 
 // victory
 document.getElementById("victory-button").addEventListener("click", function() {
+    stopConfetti();
     document.getElementById("victory").classList.add("hidden");
     startGame();
+});
+
+// play button
+playButton.addEventListener("click", function (){
+    oceanScene.classList.add("hidden");
+    startGame()
 });
 
 // level
