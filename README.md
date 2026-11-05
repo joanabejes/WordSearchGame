@@ -20,7 +20,6 @@ Every hidden word was chosen to introduce players important ecological themes: s
 [ X ] Multiple difficulty levels (different grid sizes and hints instead of words)
 [ X ] Multiple languages for international accessibility
 [ X ] Diagonal and reversed word placement
-[   ] New themed word packs (recycling, renewable energy, biodiversity and others)
 [   ] Time and score system
 [ X ] Mobile version WITHOUT messing up the formatting
 

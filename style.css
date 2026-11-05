@@ -107,9 +107,11 @@ h1 {color: #0277bd;}
 }
 
 #logo {
-    width: min(90vw, 660px);
+    display: block;
+    margin: 0 auto;
+    width: min(760px, 88vw);
     height: auto;
-    filter: drop-shadow(0 10px 30px rgba(0,0,0,0.4));
+    filter: drop-shadow(0 10px 30px rgba(0,0,0,0.25));
     animation: floatLogo 4.5s ease-in-out infinite;
 }
 
@@ -126,7 +128,7 @@ h1 {color: #0277bd;}
 }
 
 #tagline {
-    color: #e1f5fe;
+    color: #4fc3f7;
     font-size: 20px;
     letter-spacing: 2px;
     margin: 4px 0 34px;
@@ -269,6 +271,14 @@ h1 {color: #0277bd;}
     z-index: 1;
 }
 
+#game-logo{
+    display: block;
+    width: min(320px, 55vw);
+    height: auto;
+    margin: 0 auto;
+    filter: drop-shadow(0 4px 12px rgba(0,0,0,0.25));
+}
+
 #left-panel, #right-panel {
     width: 220px;
     flex-shrink: 0;
@@ -296,10 +306,7 @@ h1 {color: #0277bd;}
     justify-content: center;
 }
 
-#center-panel h1 {
-    color: #e1f5fe;
-    text-shadow: 0 3px 12px rgba(0,0,0,0.6);
-}
+
 
 /* grid */
 #grid {
