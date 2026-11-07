@@ -1,4 +1,3 @@
-
 // letters to fill the board
 const LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
@@ -261,6 +260,230 @@ function chooseRandomWords() {
     return selection;
 }
 
+// scoreboard
+const SCORES_KEY = "aquasearch_scores";
+const MAX_SCORES = 5;
+const MEDALS = ["🥇", "🥈", "🥉"]
+
+function loadScores(){
+    try{
+        return JSON.parse(localStorage.getItem(SCORES_KEY)) || {};
+    } catch (e){
+        return {};
+    }
+}
+
+function saveScores(data){
+    try {
+        localStorage.setItem(SCORES_KEY, JSON.stringify(data));
+    }catch (e){}
+}
+
+function scoreKey(level, language){
+    return level + "-" + language;
+}
+
+function formatTime(ms){
+    const total = Math.floor(ms/1000);
+    const m = String(Math.floor(total/60)).padStart(2, "0");
+    const s = String(total % 60).padStart(2, "0");
+    return m +
+        ":" + s;
+}
+
+function countryFlag(code){
+    if (!code || typeof code !== "string" || code.length !== 2) return "🌍";
+    try {
+        const base = 127397;
+        return String.fromCodePoint(
+            ...code.toUpperCase().split("").map(c => c.charCodeAt(0) + base)
+        );
+    } catch (e) {
+        return "🌍";
+    }
+}
+
+function addScore(level, language, timeMs, animal, animalName, fullName, country){
+    const data = loadScores();
+    const key = scoreKey(level, language);
+    if(!data[key]) {
+        data[key] = [];
+    }
+
+    const entry = {
+        time: timeMs,
+        date: new Date().toISOString().slice(0, 10),
+        animal: animal,
+        animalName: animalName,
+        name: fullName,
+        country: country
+    };
+
+    data[key].push(entry);
+    data[key].sort((a,b) => a.time - b.time);
+    data[key] = data[key].slice(0, MAX_SCORES);
+    saveScores(data);
+
+    return data[key].findIndex(e => e.time === entry.time && e.date === entry.date);
+}
+
+function getScores(level, language){
+    const data = loadScores();
+    return data[scoreKey(level, language)] || [];
+}
+
+// timer
+let timerInterval = null;
+let timerStart = 0;
+let elapsedMs = 0;
+
+function startTimer(){
+    stopTimer();
+    timerStart = Date.now();
+    elapsedMs = 0;
+    updateTimerDisplay(0);
+    timerInterval = setInterval(function () {
+        elapsedMs = Date.now() - timerStart;
+        updateTimerDisplay(elapsedMs);
+    }, 200)
+}
+
+function stopTimer(){
+    if (timerInterval){
+        clearInterval(timerInterval);
+        timerInterval = null;
+    }
+}
+
+function resetTimer(){
+    stopTimer();
+    elapsedMs = 0;
+    updateTimerDisplay(0);
+}
+
+function updateTimerDisplay(ms){
+    const el = document.getElementById("timer");
+    if (el){
+        el.textContent = formatTime(ms);
+    }
+}
+
+// score rendering
+function scoreRowHTML(rank, s, extraClass){
+    const cls = extraClass ? ' class="' + extraClass + '"' : "";
+    const flag = countryFlag(s.country);
+    const medal = MEDALS[rank] || (rank + 1) + ".";
+    const label = s.name || s.animalName || "Player";
+
+    return "<li" + cls + ">" +
+        '<span class="score-name">' + medal + " " + label + " " + flag + "</span>" +
+        '<span class="score-time">' + formatTime(s.time) + "</span>" +
+        "</li>";
+}
+
+function renderLeftScores() {
+    const list = document.getElementById("score-list");
+    if (!list) return;
+    const scores = getScores(currentLevel, currentLanguage);
+    list.innerHTML = "";
+
+    if (scores.length === 0){
+        list.innerHTML = '<li class="empty">No scores yet</li>';
+        return;
+    }
+
+    scores.forEach(function(s, i){
+        list.insertAdjacentHTML("beforeend", scoreRowHTML(i, s, ""));
+    });
+}
+
+function renderVictoryScores(newIndex) {
+    const box = document.getElementById("victory-scores");
+    if (!box) return;
+    const scores = getScores(currentLevel, currentLanguage);
+
+    let html = "<h3>Best Scores — " + currentLevel + " / " +
+        currentLanguage.toUpperCase() + "</h3><ol>";
+    scores.forEach(function(s, i){
+        html += scoreRowHTML(i, s, i === newIndex ? "is-new" : "");
+    });
+    html += "</ol>";
+    box.innerHTML = html;
+}
+
+function renderFullScores(level, language) {
+    const list = document.getElementById("scores-full-list");
+    if (!list) return;
+    const scores = getScores(level, language);
+    list.innerHTML = "";
+
+    if (scores.length === 0){
+        list.innerHTML = '<li class="empty">No scores yet for this mode</li>';
+        return;
+    }
+
+    scores.forEach(function(s, i){
+        list.insertAdjacentHTML("beforeend", scoreRowHTML(i, s, ""));
+    });
+}
+
+function buildScoreTabs() {
+    const tabs = document.getElementById("scores-tabs");
+    if (!tabs) return;
+    tabs.innerHTML = "";
+
+    const levels = ["easy", "medium", "hard"];
+    const langs = ["en", "es", "de"];
+
+    levels.forEach(function (lv) {
+        langs.forEach(function (lg) {
+            const btn = document.createElement("button");
+            btn.textContent = lv + " / " + lg.toUpperCase();
+            btn.dataset.level = lv;
+            btn.dataset.language = lg;
+            btn.addEventListener("click", function () {
+                tabs.querySelectorAll("button").forEach(function (b) {
+                    b.classList.remove("active");
+                });
+                btn.classList.add("active");
+                renderFullScores(lv, lg);
+            });
+            tabs.appendChild(btn);
+        });
+    });
+
+    tabs.querySelector("button").classList.add("active");
+    renderFullScores("easy", "en");
+}
+
+// scores overlay
+const scoresOverlay = document.getElementById("scores-overlay");
+const scoresButton = document.getElementById("scores-button");
+const scoresClose = document.getElementById("scores-close");
+const scoresMobileBtn = document.getElementById("scores-mobile-btn");
+
+function openScoresOverlay(){
+    buildScoreTabs();
+    if (scoresOverlay) scoresOverlay.classList.remove("hidden");
+}
+
+if (scoresButton) {
+    scoresButton.addEventListener("click", function () {
+        buildScoreTabs();
+        scoresOverlay.classList.remove("hidden");
+    });
+}
+if (scoresClose) {
+    scoresClose.addEventListener("click", function () {
+        scoresOverlay.classList.add("hidden");
+    });
+}
+if (scoresOverlay) {
+    scoresOverlay.addEventListener("click", function (e) {
+        if (e.target === scoresOverlay) scoresOverlay.classList.add("hidden");
+    });
+}
+
 // update ocean
 function updateOcean(){
     const total = WORDS.length;
@@ -462,12 +685,232 @@ function checkWord (r1, c1, r2, c2){
             document.getElementById("message").textContent = "You found: " + word;
             // victory
             if (foundCount === WORDS.length){
-                document.getElementById("victory").classList.remove("hidden");
-                startConfetti();
+                winGame();
             }
         }
     }
 }
+
+// name generator
+const ANIMALS = [
+    { emoji: "🐬", word: "Dolphin" },
+    { emoji: "🐢", word: "Turtle" },
+    { emoji: "🦈", word: "Shark" },
+    { emoji: "🐙", word: "Octopus" },
+    { emoji: "🐠", word: "Fish" },
+    { emoji: "🐳", word: "Whale" },
+    { emoji: "🦀", word: "Crab" },
+    { emoji: "🐡", word: "Puffer" },
+    { emoji: "🐟", word: "Minnow" },
+    { emoji: "🦑", word: "Squid" },
+    { emoji: "🐚", word: "Shell" },
+    { emoji: "🪼", word: "Jelly" },
+    { emoji: "🦞", word: "Lobster" },
+    { emoji: "⭐", word: "Star" },
+    { emoji: "🐋", word: "Blue" }
+];
+
+const ADJECTIVES = [
+    "Magic","Funny","Brave","Swift","Happy","Bright",
+    "Clever","Wild","Calm","Bold","Lucky","Sunny",
+    "Silent","Deep","Blue","Golden","Silver","Coral",
+    "Ocean","Wave","Storm","Frost","Neon","Turbo"
+];
+
+let generatedAnimal = "";
+let generatedAnimalName = "";
+let generatedFullName = "";
+
+function generateRandomName(){
+    const animal = ANIMALS[Math.floor(Math.random() * ANIMALS.length)];
+    const adj = ADJECTIVES[Math.floor(Math.random() * ADJECTIVES.length)];
+
+    generatedAnimal = animal.emoji;
+    generatedAnimalName = animal.word;
+    generatedFullName = animal.word + adj;
+
+    const animalEl = document.getElementById("name-animal");
+    const textEl = document.getElementById("name-text");
+    if (animalEl) animalEl.textContent = animal.emoji;
+    if (textEl) textEl.textContent = generatedFullName;
+}
+
+/* ===== COUNTRY LIST ===== */
+const COUNTRIES = [
+    { code: "AF", name: "Afghanistan" }, { code: "AL", name: "Albania" },
+    { code: "DZ", name: "Algeria" }, { code: "AD", name: "Andorra" },
+    { code: "AO", name: "Angola" }, { code: "AG", name: "Antigua and Barbuda" },
+    { code: "AR", name: "Argentina" }, { code: "AM", name: "Armenia" },
+    { code: "AU", name: "Australia" }, { code: "AT", name: "Austria" },
+    { code: "AZ", name: "Azerbaijan" }, { code: "BS", name: "Bahamas" },
+    { code: "BH", name: "Bahrain" }, { code: "BD", name: "Bangladesh" },
+    { code: "BB", name: "Barbados" }, { code: "BY", name: "Belarus" },
+    { code: "BE", name: "Belgium" }, { code: "BZ", name: "Belize" },
+    { code: "BJ", name: "Benin" }, { code: "BT", name: "Bhutan" },
+    { code: "BO", name: "Bolivia" }, { code: "BA", name: "Bosnia and Herzegovina" },
+    { code: "BW", name: "Botswana" }, { code: "BR", name: "Brazil" },
+    { code: "BN", name: "Brunei" }, { code: "BG", name: "Bulgaria" },
+    { code: "BF", name: "Burkina Faso" }, { code: "BI", name: "Burundi" },
+    { code: "CV", name: "Cabo Verde" }, { code: "KH", name: "Cambodia" },
+    { code: "CM", name: "Cameroon" }, { code: "CA", name: "Canada" },
+    { code: "CF", name: "Central African Republic" }, { code: "TD", name: "Chad" },
+    { code: "CL", name: "Chile" }, { code: "CN", name: "China" },
+    { code: "CO", name: "Colombia" }, { code: "KM", name: "Comoros" },
+    { code: "CG", name: "Congo" }, { code: "CD", name: "Congo (DRC)" },
+    { code: "CR", name: "Costa Rica" }, { code: "CI", name: "Côte d'Ivoire" },
+    { code: "HR", name: "Croatia" }, { code: "CU", name: "Cuba" },
+    { code: "CY", name: "Cyprus" }, { code: "CZ", name: "Czechia" },
+    { code: "DK", name: "Denmark" }, { code: "DJ", name: "Djibouti" },
+    { code: "DM", name: "Dominica" }, { code: "DO", name: "Dominican Republic" },
+    { code: "EC", name: "Ecuador" }, { code: "EG", name: "Egypt" },
+    { code: "SV", name: "El Salvador" }, { code: "GQ", name: "Equatorial Guinea" },
+    { code: "ER", name: "Eritrea" }, { code: "EE", name: "Estonia" },
+    { code: "SZ", name: "Eswatini" }, { code: "ET", name: "Ethiopia" },
+    { code: "FJ", name: "Fiji" }, { code: "FI", name: "Finland" },
+    { code: "FR", name: "France" }, { code: "GA", name: "Gabon" },
+    { code: "GM", name: "Gambia" }, { code: "GE", name: "Georgia" },
+    { code: "DE", name: "Germany" }, { code: "GH", name: "Ghana" },
+    { code: "GR", name: "Greece" }, { code: "GD", name: "Grenada" },
+    { code: "GT", name: "Guatemala" }, { code: "GN", name: "Guinea" },
+    { code: "GW", name: "Guinea-Bissau" }, { code: "GY", name: "Guyana" },
+    { code: "HT", name: "Haiti" }, { code: "HN", name: "Honduras" },
+    { code: "HU", name: "Hungary" }, { code: "IS", name: "Iceland" },
+    { code: "IN", name: "India" }, { code: "ID", name: "Indonesia" },
+    { code: "IR", name: "Iran" }, { code: "IQ", name: "Iraq" },
+    { code: "IE", name: "Ireland" }, { code: "IL", name: "Israel" },
+    { code: "IT", name: "Italy" }, { code: "JM", name: "Jamaica" },
+    { code: "JP", name: "Japan" }, { code: "JO", name: "Jordan" },
+    { code: "KZ", name: "Kazakhstan" }, { code: "KE", name: "Kenya" },
+    { code: "KI", name: "Kiribati" }, { code: "KW", name: "Kuwait" },
+    { code: "KG", name: "Kyrgyzstan" }, { code: "LA", name: "Laos" },
+    { code: "LV", name: "Latvia" }, { code: "LB", name: "Lebanon" },
+    { code: "LS", name: "Lesotho" }, { code: "LR", name: "Liberia" },
+    { code: "LY", name: "Libya" }, { code: "LI", name: "Liechtenstein" },
+    { code: "LT", name: "Lithuania" }, { code: "LU", name: "Luxembourg" },
+    { code: "MG", name: "Madagascar" }, { code: "MW", name: "Malawi" },
+    { code: "MY", name: "Malaysia" }, { code: "MV", name: "Maldives" },
+    { code: "ML", name: "Mali" }, { code: "MT", name: "Malta" },
+    { code: "MH", name: "Marshall Islands" }, { code: "MR", name: "Mauritania" },
+    { code: "MU", name: "Mauritius" }, { code: "MX", name: "Mexico" },
+    { code: "FM", name: "Micronesia" }, { code: "MD", name: "Moldova" },
+    { code: "MC", name: "Monaco" }, { code: "MN", name: "Mongolia" },
+    { code: "ME", name: "Montenegro" }, { code: "MA", name: "Morocco" },
+    { code: "MZ", name: "Mozambique" }, { code: "MM", name: "Myanmar" },
+    { code: "NA", name: "Namibia" }, { code: "NR", name: "Nauru" },
+    { code: "NP", name: "Nepal" }, { code: "NL", name: "Netherlands" },
+    { code: "NZ", name: "New Zealand" }, { code: "NI", name: "Nicaragua" },
+    { code: "NE", name: "Niger" }, { code: "NG", name: "Nigeria" },
+    { code: "KP", name: "North Korea" }, { code: "MK", name: "North Macedonia" },
+    { code: "NO", name: "Norway" }, { code: "OM", name: "Oman" },
+    { code: "PK", name: "Pakistan" }, { code: "PW", name: "Palau" },
+    { code: "PS", name: "Palestine" }, { code: "PA", name: "Panama" },
+    { code: "PG", name: "Papua New Guinea" }, { code: "PY", name: "Paraguay" },
+    { code: "PE", name: "Peru" }, { code: "PH", name: "Philippines" },
+    { code: "PL", name: "Poland" }, { code: "PT", name: "Portugal" },
+    { code: "QA", name: "Qatar" }, { code: "RO", name: "Romania" },
+    { code: "RU", name: "Russia" }, { code: "RW", name: "Rwanda" },
+    { code: "KN", name: "Saint Kitts and Nevis" }, { code: "LC", name: "Saint Lucia" },
+    { code: "VC", name: "Saint Vincent and the Grenadines" }, { code: "WS", name: "Samoa" },
+    { code: "SM", name: "San Marino" }, { code: "ST", name: "São Tomé and Príncipe" },
+    { code: "SA", name: "Saudi Arabia" }, { code: "SN", name: "Senegal" },
+    { code: "RS", name: "Serbia" }, { code: "SC", name: "Seychelles" },
+    { code: "SL", name: "Sierra Leone" }, { code: "SG", name: "Singapore" },
+    { code: "SK", name: "Slovakia" }, { code: "SI", name: "Slovenia" },
+    { code: "SB", name: "Solomon Islands" }, { code: "SO", name: "Somalia" },
+    { code: "ZA", name: "South Africa" }, { code: "KR", name: "South Korea" },
+    { code: "SS", name: "South Sudan" }, { code: "ES", name: "Spain" },
+    { code: "LK", name: "Sri Lanka" }, { code: "SD", name: "Sudan" },
+    { code: "SR", name: "Suriname" }, { code: "SE", name: "Sweden" },
+    { code: "CH", name: "Switzerland" }, { code: "SY", name: "Syria" },
+    { code: "TW", name: "Taiwan" }, { code: "TJ", name: "Tajikistan" },
+    { code: "TZ", name: "Tanzania" }, { code: "TH", name: "Thailand" },
+    { code: "TL", name: "Timor-Leste" }, { code: "TG", name: "Togo" },
+    { code: "TO", name: "Tonga" }, { code: "TT", name: "Trinidad and Tobago" },
+    { code: "TN", name: "Tunisia" }, { code: "TR", name: "Türkiye" },
+    { code: "TM", name: "Turkmenistan" }, { code: "TV", name: "Tuvalu" },
+    { code: "UG", name: "Uganda" }, { code: "UA", name: "Ukraine" },
+    { code: "AE", name: "United Arab Emirates" }, { code: "GB", name: "United Kingdom" },
+    { code: "US", name: "United States" }, { code: "UY", name: "Uruguay" },
+    { code: "UZ", name: "Uzbekistan" }, { code: "VU", name: "Vanuatu" },
+    { code: "VA", name: "Vatican City" }, { code: "VE", name: "Venezuela" },
+    { code: "VN", name: "Vietnam" }, { code: "YE", name: "Yemen" },
+    { code: "ZM", name: "Zambia" }, { code: "ZW", name: "Zimbabwe" }
+];
+
+function populateCountrySelect(){
+    const select = document.getElementById("player-country");
+    if (!select) return;
+
+    COUNTRIES.forEach(function(c){
+        const opt = document.createElement("option");
+        opt.value = c.code;
+        opt.textContent = countryFlag(c.code) + " " + c.name;
+        select.appendChild(opt);
+    });
+}
+
+// victory handler
+let pendingTime = 0;
+
+function winGame(){
+    stopTimer();
+    pendingTime = elapsedMs;
+
+    const timeEl = document.getElementById("victory-time");
+    if (timeEl) timeEl.textContent = "Your time: " + formatTime(elapsedMs);
+
+    const form = document.getElementById("victory-form");
+    const countrySelect = document.getElementById("player-country");
+    const saveBtn = document.getElementById("save-score");
+
+    if (form) form.classList.remove("saved");
+    if (countrySelect){
+        countrySelect.value = "";
+        countrySelect.style.borderColor = "";
+    }
+    if (saveBtn) saveBtn.disabled = false;
+
+    generateRandomName();
+
+    const box = document.getElementById("victory-scores");
+    if (box) box.innerHTML = "";
+
+    document.getElementById("victory").classList.remove("hidden");
+    startConfetti();
+}
+
+function saveVictoryScore(){
+    const countrySelect = document.getElementById("player-country");
+    const saveBtn = document.getElementById("save-score");
+    const form = document.getElementById("victory-form");
+
+    const country = countrySelect.value;
+
+    if (!country){
+        countrySelect.focus();
+        countrySelect.style.borderColor = "#ef5350";
+        return;
+    }
+
+    const newIndex = addScore(
+        currentLevel, currentLanguage, pendingTime,
+        generatedAnimal, generatedAnimalName, generatedFullName, country
+    );
+
+    renderVictoryScores(newIndex);
+    renderLeftScores();
+
+    if (form) form.classList.add("saved");
+    if (saveBtn) saveBtn.disabled = true;
+}
+
+
+// listeners
+const rerollBtn = document.getElementById("reroll-name");
+if (rerollBtn) rerollBtn.addEventListener("click", generateRandomName);
+
+const saveScoreBtn = document.getElementById("save-score");
+if (saveScoreBtn) saveScoreBtn.addEventListener("click", saveVictoryScore);
 
 
 // starting a new game
@@ -555,6 +998,11 @@ function startGame(){
         item.classList.add("visible");
         item.classList.remove("removed");
     });
+
+    // scores panel and timer
+    renderLeftScores();
+    resetTimer();
+    startTimer();
 }
 
 // finding words or checking
@@ -575,9 +1023,6 @@ function findWord(word) {
     return "NOT found (or diagonal/reversed)";
 }
 
-// staring the first game when page loads
-//startGame();
-
 // game limit
 const MAX_NEW_GAMES = 3;
 let newGamesLeft = MAX_NEW_GAMES;
@@ -596,7 +1041,7 @@ document.getElementById("new-game").addEventListener("click", function() {
 });
 
 // victory
-document.getElementById("victory-button").addEventListener("click", function() {
+document.getElementById("victory-button").addEventListener("click", function(){
     stopConfetti();
     document.getElementById("victory").classList.add("hidden");
     startGame();
@@ -662,3 +1107,7 @@ for (const btn of languageButtons){
         btn.classList.remove("active");
     }
 }
+
+// initial score panel render
+populateCountrySelect();
+renderLeftScores();
