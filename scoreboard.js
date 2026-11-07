@@ -1,56 +1,57 @@
-const SCORES_KEY = "aquasearch_scores";
 const MAX_SCORES = 5;
 const MEDALS = ["🥇", "🥈", "🥉"];
 
-// storage
-function loadScores(){
-    try { return JSON.parse(localStorage.getItem(SCORES_KEY)) || {}; }
-    catch (e){ return {}; }
+// reading
+async function getScores(level, language) {
+    try {
+        const snapshot = await scoresCollection
+            .where("level", "==", level)
+            .where("language", "==", language)
+            .orderBy("time", "asc")
+            .limit(MAX_SCORES)
+            .get();
+
+        return snapshot.docs.map(doc => doc.data());
+    } catch (error) {
+        console.error("Erro ao buscar scores:", error);
+        return [];
+    }
 }
 
-function saveScores(data){
-    try { localStorage.setItem(SCORES_KEY, JSON.stringify(data)); }
-    catch (e){}
+// adding
+async function addScore(level, language, timeMs, animal, animalName, fullName, country) {
+    try {
+        const entry = {
+            level: level,
+            language: language,
+            time: timeMs,
+            name: fullName,
+            animal: animal,
+            animalName: animalName,
+            country: country,
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        };
+
+        await scoresCollection.add(entry);
+
+        const scores = await getScores(level, language);
+        const index = scores.findIndex(s => s.time === timeMs && s.name === fullName);
+
+        return index;
+    } catch (error) {
+        console.error("Error saving this score:", error);
+        return -1;
+    }
 }
-
-function scoreKey(level, language){ return level + "-" + language; }
-
-function getScores(level, language){
-    const data = loadScores();
-    return data[scoreKey(level, language)] || [];
-}
-
-function addScore(level, language, timeMs, animal, animalName, fullName, country){
-    const data = loadScores();
-    const key = scoreKey(level, language);
-    if (!data[key]) data[key] = [];
-
-    const entry = {
-        time: timeMs,
-        date: new Date().toISOString().slice(0, 10),
-        animal: animal,
-        animalName: animalName,
-        name: fullName,
-        country: country
-    };
-
-    data[key].push(entry);
-    data[key].sort((a, b) => a.time - b.time);
-    data[key] = data[key].slice(0, MAX_SCORES);
-    saveScores(data);
-
-    return data[key].indexOf(entry);
-}
-
-// formatting
-function formatTime(ms){
+// formating
+function formatTime(ms) {
     const total = Math.floor(ms / 1000);
     const m = String(Math.floor(total / 60)).padStart(2, "0");
     const s = String(total % 60).padStart(2, "0");
     return m + ":" + s;
 }
 
-function countryFlag(code){
+function countryFlag(code) {
     if (!code || code.length !== 2) return "🌍";
     const base = 127397;
     return String.fromCodePoint(
@@ -63,95 +64,114 @@ let timerInterval = null;
 let timerStart = 0;
 let elapsedMs = 0;
 
-function startTimer(){
+function startTimer() {
     stopTimer();
     timerStart = Date.now();
     elapsedMs = 0;
     updateTimerDisplay(0);
-    timerInterval = setInterval(function(){
+    timerInterval = setInterval(function () {
         elapsedMs = Date.now() - timerStart;
         updateTimerDisplay(elapsedMs);
     }, 200);
 }
 
-function stopTimer(){
-    if (timerInterval){
+function stopTimer() {
+    if (timerInterval) {
         clearInterval(timerInterval);
         timerInterval = null;
     }
 }
 
-function resetTimer(){
+function resetTimer() {
     stopTimer();
     elapsedMs = 0;
     updateTimerDisplay(0);
 }
 
-function updateTimerDisplay(ms){
+function updateTimerDisplay(ms) {
     const el = document.getElementById("timer");
     if (el) el.textContent = formatTime(ms);
 }
 
 // rendering
-function scoreRowHTML(rank, s, extraClass){
+function scoreRowHTML(rank, s, extraClass) {
     const cls = extraClass ? ' class="' + extraClass + '"' : "";
     const flag = countryFlag(s.country);
-    const medal = MEDALS[rank] || (rank + 1) + ".";
     const label = s.name || s.animalName || "Player";
 
-    return "<li" + cls + ">" +
-        '<span class="score-name">' + medal + " " + label + " " + flag + "</span>" +
+    let prefix;
+    if (rank < 3) {
+        prefix = MEDALS[rank];
+    } else {
+        prefix = (rank + 1) + ".";
+    }
+
+    return '<li' + cls + ' style="display:flex; justify-content:space-between; align-items:center; gap:12px; list-style:none;">' +
+        '<span class="score-name">' + prefix + " " + label + " " + flag + "</span>" +
         '<span class="score-time">' + formatTime(s.time) + "</span>" +
         "</li>";
 }
 
-function renderLeftScores(){
-    const list = document.getElementById("score-list");
-    if (!list) return;
-    const scores = getScores(currentLevel, currentLanguage);
+async function renderLeftScores() {
+    const panel = document.getElementById("left-panel");
+    if (!panel) return;
+
+    // garante que o <ol> existe; se não, recria dentro do painel
+    let list = document.getElementById("scores-list");
+    if (!list) {
+        list = document.createElement("ol");
+        list.id = "scores-list";
+        panel.appendChild(list);
+    }
+
+    list.innerHTML = '<li class="empty">Loading...</li>';
+    const scores = await getScores(currentLevel, currentLanguage);
     list.innerHTML = "";
 
-    if (scores.length === 0){
+    if (scores.length === 0) {
         list.innerHTML = '<li class="empty">No scores yet</li>';
         return;
     }
 
-    scores.forEach(function(s, i){
+    scores.forEach(function (s, i) {
         list.insertAdjacentHTML("beforeend", scoreRowHTML(i, s, ""));
     });
 }
 
-function renderVictoryScores(newIndex){
+async function renderVictoryScores(newIndex) {
     const box = document.getElementById("victory-scores");
     if (!box) return;
-    const scores = getScores(currentLevel, currentLanguage);
+
+    const scores = await getScores(currentLevel, currentLanguage);
 
     let html = "<h3>Best Scores — " + currentLevel + " / " +
         currentLanguage.toUpperCase() + "</h3><ol>";
-    scores.forEach(function(s, i){
+    scores.forEach(function (s, i) {
         html += scoreRowHTML(i, s, i === newIndex ? "is-new" : "");
     });
     html += "</ol>";
     box.innerHTML = html;
 }
 
-function renderFullScores(level, language){
+async function renderFullScores(level, language) {
     const list = document.getElementById("scores-full-list");
     if (!list) return;
-    const scores = getScores(level, language);
+
+    list.innerHTML = '<li class="empty">Loading...</li>';
+    const scores = await getScores(level, language);
     list.innerHTML = "";
 
-    if (scores.length === 0){
+    if (scores.length === 0) {
         list.innerHTML = '<li class="empty">No scores yet for this mode</li>';
         return;
     }
 
-    scores.forEach(function(s, i){
+    scores.forEach(function (s, i) {
         list.insertAdjacentHTML("beforeend", scoreRowHTML(i, s, ""));
     });
 }
 
-function buildScoreTabs(){
+function buildScoreTabs() {
     const tabs = document.getElementById("scores-tabs");
     if (!tabs) return;
     tabs.innerHTML = "";
@@ -159,14 +179,14 @@ function buildScoreTabs(){
     const levels = ["easy", "medium", "hard"];
     const langs = ["en", "es", "de"];
 
-    levels.forEach(function(lv){
-        langs.forEach(function(lg){
+    levels.forEach(function (lv) {
+        langs.forEach(function (lg) {
             const btn = document.createElement("button");
             btn.textContent = lv + " / " + lg.toUpperCase();
             btn.dataset.level = lv;
             btn.dataset.language = lg;
-            btn.addEventListener("click", function(){
-                tabs.querySelectorAll("button").forEach(function(b){
+            btn.addEventListener("click", function () {
+                tabs.querySelectorAll("button").forEach(function (b) {
                     b.classList.remove("active");
                 });
                 btn.classList.add("active");
@@ -186,13 +206,13 @@ const scoresButton = document.getElementById("scores-button");
 const scoresClose = document.getElementById("scores-close");
 const scoresMobileBtn = document.getElementById("scores-mobile-btn");
 
-function openScoresOverlay(){
+function openScoresOverlay() {
     buildScoreTabs();
     if (scoresOverlay) scoresOverlay.classList.remove("hidden");
 }
 
 // name generator
-function generateRandomName(){
+function generateRandomName() {
     const animal = ANIMALS[Math.floor(Math.random() * ANIMALS.length)];
     const adj = ADJECTIVES[Math.floor(Math.random() * ADJECTIVES.length)];
 
@@ -206,12 +226,12 @@ function generateRandomName(){
     if (textEl) textEl.textContent = generatedFullName;
 }
 
-// country selection
-function populateCountrySelect(){
+// countries
+function populateCountrySelect() {
     const select = document.getElementById("player-country");
     if (!select) return;
 
-    COUNTRIES.forEach(function(c){
+    COUNTRIES.forEach(function (c) {
         const opt = document.createElement("option");
         opt.value = c.code;
         opt.textContent = countryFlag(c.code) + " " + c.name;
@@ -219,28 +239,33 @@ function populateCountrySelect(){
     });
 }
 
-// save score
-function saveVictoryScore(){
+// saving
+async function saveVictoryScore() {
     const countrySelect = document.getElementById("player-country");
     const saveBtn = document.getElementById("save-score");
     const form = document.getElementById("victory-form");
 
     const country = countrySelect.value;
 
-    if (!country){
+    if (!country) {
         countrySelect.focus();
         countrySelect.style.borderColor = "#ef5350";
         return;
     }
 
-    const newIndex = addScore(
+    if (saveBtn) {
+        saveBtn.disabled = true;
+        saveBtn.textContent = "Saving...";
+    }
+
+    const newIndex = await addScore(
         currentLevel, currentLanguage, pendingTime,
         generatedAnimal, generatedAnimalName, generatedFullName, country
     );
 
-    renderVictoryScores(newIndex);
-    renderLeftScores();
+    await renderVictoryScores(newIndex);
+    await renderLeftScores();
 
     if (form) form.classList.add("saved");
-    if (saveBtn) saveBtn.disabled = true;
+    if (saveBtn) saveBtn.textContent = "Saved";
 }

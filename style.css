@@ -617,7 +617,7 @@ h1 {color: #0277bd;}
 #score-list li {
     display: flex;
     justify-content: space-between;
-    gap: 8px;
+    gap: 12px;
     padding: 3px 0;
     border-bottom: 1px solid rgba(179,229,252,0.15);
 }
@@ -625,6 +625,8 @@ h1 {color: #0277bd;}
 #score-list .score-name {
     display: flex;
     align-items: center;
+    flex: 1;
+    min-width: 0;
     gap: 4px;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -635,6 +637,8 @@ h1 {color: #0277bd;}
     font-weight: bold;
     color: #4fc3f7;
     font-variant-numeric: tabular-nums;
+    margin-left: 8px;
+    flex-shrink: 0;
 }
 
 #score-list .empty {
@@ -761,6 +765,7 @@ h1 {color: #0277bd;}
     letter-spacing: 1px;
 }
 
+#scores-list,
 #victory-scores ol {
     list-style: none;
     padding: 0;
@@ -772,7 +777,7 @@ h1 {color: #0277bd;}
 #victory-scores li {
     display: flex;
     justify-content: space-between;
-    gap: 10px;
+    gap: 12px;
     padding: 4px 0;
     font-variant-numeric: tabular-nums;
 }
