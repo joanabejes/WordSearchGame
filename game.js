@@ -98,7 +98,7 @@ function stopConfetti(){
     if (container) container.innerHTML = "";
 }
 
-// word selection
+// handle and check
 function handleCellClick(row, col, cellElement){
     if (firstCell === null){
         firstCell = cellElement;

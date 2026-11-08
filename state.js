@@ -80,7 +80,7 @@ if (savedValueIsValid(savedLevel, levelButtons, "level")){
     currentLevel = savedLevel;
 }
 
-/* ===== WORD SELECTION ===== */
+// word selection
 function chooseRandomWords() {
     const fullPool = WORD_POOLS[currentLanguage][currentLevel];
     const pool = [...fullPool].filter(word => letterCount(word) <= SIZE);
